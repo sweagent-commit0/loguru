@@ -95,7 +95,6 @@ from multiprocessing import current_process, get_context
 from multiprocessing.context import BaseContext
 from os.path import basename, splitext
 from threading import current_thread
-
 from . import _asyncio_loop, _colorama, _defaults, _filters
 from ._better_exceptions import ExceptionFormatter
 from ._colorizer import Colorizer
@@ -108,101 +107,39 @@ from ._handler import Handler
 from ._locks_machinery import create_logger_lock
 from ._recattrs import RecordException, RecordFile, RecordLevel, RecordProcess, RecordThread
 from ._simple_sinks import AsyncSink, CallableSink, StandardSink, StreamSink
-
 if sys.version_info >= (3, 6):
     from os import PathLike
 else:
     from pathlib import PurePath as PathLike
-
-
-Level = namedtuple("Level", ["name", "no", "color", "icon"])
-
+Level = namedtuple('Level', ['name', 'no', 'color', 'icon'])
 start_time = aware_now()
-
-context = ContextVar("loguru_context", default={})
-
+context = ContextVar('loguru_context', default={})
 
 class Core:
+
     def __init__(self):
-        levels = [
-            Level(
-                "TRACE",
-                _defaults.LOGURU_TRACE_NO,
-                _defaults.LOGURU_TRACE_COLOR,
-                _defaults.LOGURU_TRACE_ICON,
-            ),
-            Level(
-                "DEBUG",
-                _defaults.LOGURU_DEBUG_NO,
-                _defaults.LOGURU_DEBUG_COLOR,
-                _defaults.LOGURU_DEBUG_ICON,
-            ),
-            Level(
-                "INFO",
-                _defaults.LOGURU_INFO_NO,
-                _defaults.LOGURU_INFO_COLOR,
-                _defaults.LOGURU_INFO_ICON,
-            ),
-            Level(
-                "SUCCESS",
-                _defaults.LOGURU_SUCCESS_NO,
-                _defaults.LOGURU_SUCCESS_COLOR,
-                _defaults.LOGURU_SUCCESS_ICON,
-            ),
-            Level(
-                "WARNING",
-                _defaults.LOGURU_WARNING_NO,
-                _defaults.LOGURU_WARNING_COLOR,
-                _defaults.LOGURU_WARNING_ICON,
-            ),
-            Level(
-                "ERROR",
-                _defaults.LOGURU_ERROR_NO,
-                _defaults.LOGURU_ERROR_COLOR,
-                _defaults.LOGURU_ERROR_ICON,
-            ),
-            Level(
-                "CRITICAL",
-                _defaults.LOGURU_CRITICAL_NO,
-                _defaults.LOGURU_CRITICAL_COLOR,
-                _defaults.LOGURU_CRITICAL_ICON,
-            ),
-        ]
+        levels = [Level('TRACE', _defaults.LOGURU_TRACE_NO, _defaults.LOGURU_TRACE_COLOR, _defaults.LOGURU_TRACE_ICON), Level('DEBUG', _defaults.LOGURU_DEBUG_NO, _defaults.LOGURU_DEBUG_COLOR, _defaults.LOGURU_DEBUG_ICON), Level('INFO', _defaults.LOGURU_INFO_NO, _defaults.LOGURU_INFO_COLOR, _defaults.LOGURU_INFO_ICON), Level('SUCCESS', _defaults.LOGURU_SUCCESS_NO, _defaults.LOGURU_SUCCESS_COLOR, _defaults.LOGURU_SUCCESS_ICON), Level('WARNING', _defaults.LOGURU_WARNING_NO, _defaults.LOGURU_WARNING_COLOR, _defaults.LOGURU_WARNING_ICON), Level('ERROR', _defaults.LOGURU_ERROR_NO, _defaults.LOGURU_ERROR_COLOR, _defaults.LOGURU_ERROR_ICON), Level('CRITICAL', _defaults.LOGURU_CRITICAL_NO, _defaults.LOGURU_CRITICAL_COLOR, _defaults.LOGURU_CRITICAL_ICON)]
         self.levels = {level.name: level for level in levels}
-        self.levels_ansi_codes = {
-            **{name: Colorizer.ansify(level.color) for name, level in self.levels.items()},
-            None: "",
-        }
-
-        # Cache used internally to quickly access level attributes based on their name or severity.
-        # It can also contain integers as keys, it serves to avoid calling "isinstance()" repeatedly
-        # when "logger.log()" is used.
-        self.levels_lookup = {
-            name: (name, name, level.no, level.icon) for name, level in self.levels.items()
-        }
-
+        self.levels_ansi_codes = {**{name: Colorizer.ansify(level.color) for name, level in self.levels.items()}, None: ''}
+        self.levels_lookup = {name: (name, name, level.no, level.icon) for name, level in self.levels.items()}
         self.handlers_count = 0
         self.handlers = {}
-
         self.extra = {}
         self.patcher = None
-
-        self.min_level = float("inf")
+        self.min_level = float('inf')
         self.enabled = {}
         self.activation_list = []
         self.activation_none = True
-
         self.lock = create_logger_lock()
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state["lock"] = None
+        state['lock'] = None
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.lock = create_logger_lock()
-
 
 class Logger:
     """An object to dispatch logging messages to configured handlers.
@@ -232,25 +169,10 @@ class Logger:
         self._options = (exception, depth, record, lazy, colors, raw, capture, patchers, extra)
 
     def __repr__(self):
-        return "<loguru.logger handlers=%r>" % list(self._core.handlers.values())
+        return '<loguru.logger handlers=%r>' % list(self._core.handlers.values())
 
-    def add(
-        self,
-        sink,
-        *,
-        level=_defaults.LOGURU_LEVEL,
-        format=_defaults.LOGURU_FORMAT,
-        filter=_defaults.LOGURU_FILTER,
-        colorize=_defaults.LOGURU_COLORIZE,
-        serialize=_defaults.LOGURU_SERIALIZE,
-        backtrace=_defaults.LOGURU_BACKTRACE,
-        diagnose=_defaults.LOGURU_DIAGNOSE,
-        enqueue=_defaults.LOGURU_ENQUEUE,
-        context=_defaults.LOGURU_CONTEXT,
-        catch=_defaults.LOGURU_CATCH,
-        **kwargs
-    ):
-        r"""Add a handler sending log messages to a sink adequately configured.
+    def add(self, sink, *, level=_defaults.LOGURU_LEVEL, format=_defaults.LOGURU_FORMAT, filter=_defaults.LOGURU_FILTER, colorize=_defaults.LOGURU_COLORIZE, serialize=_defaults.LOGURU_SERIALIZE, backtrace=_defaults.LOGURU_BACKTRACE, diagnose=_defaults.LOGURU_DIAGNOSE, enqueue=_defaults.LOGURU_ENQUEUE, context=_defaults.LOGURU_CONTEXT, catch=_defaults.LOGURU_CATCH, **kwargs):
+        """Add a handler sending log messages to a sink adequately configured.
 
         Parameters
         ----------
@@ -388,7 +310,7 @@ class Logger:
         If fine-grained control is needed, the ``format`` can also be a function which takes the
         record as parameter and return the format template string. However, note that in such a
         case, you should take care of appending the line ending and exception field to the returned
-        format, while ``"\n{exception}"`` is automatically appended for convenience if ``format`` is
+        format, while ``"\\n{exception}"`` is automatically appended for convenience if ``format`` is
         a string.
 
         The ``filter`` attribute can be used to control which messages are effectively passed to the
@@ -658,9 +580,9 @@ class Logger:
 
         Tags which are not recognized will raise an exception during parsing, to inform you about
         possible misuse. If you wish to display a markup tag literally, you can escape it by
-        prepending a ``\`` like for example ``\<blue>``. If, for some reason, you need to escape a
+        prepending a ``\\`` like for example ``\\<blue>``. If, for some reason, you need to escape a
         string programmatically, note that the regex used internally to parse markup tags is
-        ``r"\\?</?((?:[fb]g\s)?[^<>\s]*)>"``.
+        ``r"\\\\?</?((?:[fb]g\\s)?[^<>\\s]*)>"``.
 
         Note that when logging a message with ``opt(colors=True)``, color tags present in the
         formatting arguments (``args`` and ``kwargs``) are completely ignored. This is important if
@@ -776,239 +698,7 @@ class Logger:
         >>> stream_object = RandomStream(seed=12345, threshold=0.25)
         >>> logger.add(stream_object, level="INFO")
         """
-        with self._core.lock:
-            handler_id = self._core.handlers_count
-            self._core.handlers_count += 1
-
-        error_interceptor = ErrorInterceptor(catch, handler_id)
-
-        if colorize is None and serialize:
-            colorize = False
-
-        if isinstance(sink, (str, PathLike)):
-            path = sink
-            name = "'%s'" % path
-
-            if colorize is None:
-                colorize = False
-
-            wrapped_sink = FileSink(path, **kwargs)
-            kwargs = {}
-            encoding = wrapped_sink.encoding
-            terminator = "\n"
-            exception_prefix = ""
-        elif hasattr(sink, "write") and callable(sink.write):
-            name = getattr(sink, "name", None) or repr(sink)
-
-            if colorize is None:
-                colorize = _colorama.should_colorize(sink)
-
-            if colorize is True and _colorama.should_wrap(sink):
-                stream = _colorama.wrap(sink)
-            else:
-                stream = sink
-
-            wrapped_sink = StreamSink(stream)
-            encoding = getattr(sink, "encoding", None)
-            terminator = "\n"
-            exception_prefix = ""
-        elif isinstance(sink, logging.Handler):
-            name = repr(sink)
-
-            if colorize is None:
-                colorize = False
-
-            wrapped_sink = StandardSink(sink)
-            encoding = getattr(sink, "encoding", None)
-            terminator = ""
-            exception_prefix = "\n"
-        elif iscoroutinefunction(sink) or iscoroutinefunction(
-            getattr(sink, "__call__", None)  # noqa: B004
-        ):
-            name = getattr(sink, "__name__", None) or repr(sink)
-
-            if colorize is None:
-                colorize = False
-
-            loop = kwargs.pop("loop", None)
-
-            # The worker thread needs an event loop, it can't create a new one internally because it
-            # has to be accessible by the user while calling "complete()", instead we use the global
-            # one when the sink is added. If "enqueue=False" the event loop is dynamically retrieved
-            # at each logging call, which is much more convenient. However, coroutine can't access
-            # running loop in Python 3.5.2 and earlier versions, see python/asyncio#452.
-            if enqueue and loop is None:
-                try:
-                    loop = _asyncio_loop.get_running_loop()
-                except RuntimeError as e:
-                    raise ValueError(
-                        "An event loop is required to add a coroutine sink with `enqueue=True`, "
-                        "but none has been passed as argument and none is currently running."
-                    ) from e
-
-            coro = sink if iscoroutinefunction(sink) else sink.__call__
-            wrapped_sink = AsyncSink(coro, loop, error_interceptor)
-            encoding = "utf8"
-            terminator = "\n"
-            exception_prefix = ""
-        elif callable(sink):
-            name = getattr(sink, "__name__", None) or repr(sink)
-
-            if colorize is None:
-                colorize = False
-
-            wrapped_sink = CallableSink(sink)
-            encoding = "utf8"
-            terminator = "\n"
-            exception_prefix = ""
-        else:
-            raise TypeError("Cannot log to objects of type '%s'" % type(sink).__name__)
-
-        if kwargs:
-            raise TypeError("add() got an unexpected keyword argument '%s'" % next(iter(kwargs)))
-
-        if filter is None:
-            filter_func = None
-        elif filter == "":
-            filter_func = _filters.filter_none
-        elif isinstance(filter, str):
-            parent = filter + "."
-            length = len(parent)
-            filter_func = functools.partial(_filters.filter_by_name, parent=parent, length=length)
-        elif isinstance(filter, dict):
-            level_per_module = {}
-            for module, level_ in filter.items():
-                if module is not None and not isinstance(module, str):
-                    raise TypeError(
-                        "The filter dict contains an invalid module, "
-                        "it should be a string (or None), not: '%s'" % type(module).__name__
-                    )
-                if level_ is False:
-                    levelno_ = False
-                elif level_ is True:
-                    levelno_ = 0
-                elif isinstance(level_, str):
-                    try:
-                        levelno_ = self.level(level_).no
-                    except ValueError:
-                        raise ValueError(
-                            "The filter dict contains a module '%s' associated to a level name "
-                            "which does not exist: '%s'" % (module, level_)
-                        ) from None
-                elif isinstance(level_, int):
-                    levelno_ = level_
-                else:
-                    raise TypeError(
-                        "The filter dict contains a module '%s' associated to an invalid level, "
-                        "it should be an integer, a string or a boolean, not: '%s'"
-                        % (module, type(level_).__name__)
-                    )
-                if levelno_ < 0:
-                    raise ValueError(
-                        "The filter dict contains a module '%s' associated to an invalid level, "
-                        "it should be a positive integer, not: '%d'" % (module, levelno_)
-                    )
-                level_per_module[module] = levelno_
-            filter_func = functools.partial(
-                _filters.filter_by_level, level_per_module=level_per_module
-            )
-        elif callable(filter):
-            if filter == builtins.filter:
-                raise ValueError(
-                    "The built-in 'filter()' function cannot be used as a 'filter' parameter, "
-                    "this is most likely a mistake (please double-check the arguments passed "
-                    "to 'logger.add()')."
-                )
-            filter_func = filter
-        else:
-            raise TypeError(
-                "Invalid filter, it should be a function, a string or a dict, not: '%s'"
-                % type(filter).__name__
-            )
-
-        if isinstance(level, str):
-            levelno = self.level(level).no
-        elif isinstance(level, int):
-            levelno = level
-        else:
-            raise TypeError(
-                "Invalid level, it should be an integer or a string, not: '%s'"
-                % type(level).__name__
-            )
-
-        if levelno < 0:
-            raise ValueError(
-                "Invalid level value, it should be a positive integer, not: %d" % levelno
-            )
-
-        if isinstance(format, str):
-            try:
-                formatter = Colorizer.prepare_format(format + terminator + "{exception}")
-            except ValueError as e:
-                raise ValueError(
-                    "Invalid format, color markups could not be parsed correctly"
-                ) from e
-            is_formatter_dynamic = False
-        elif callable(format):
-            if format == builtins.format:
-                raise ValueError(
-                    "The built-in 'format()' function cannot be used as a 'format' parameter, "
-                    "this is most likely a mistake (please double-check the arguments passed "
-                    "to 'logger.add()')."
-                )
-            formatter = format
-            is_formatter_dynamic = True
-        else:
-            raise TypeError(
-                "Invalid format, it should be a string or a function, not: '%s'"
-                % type(format).__name__
-            )
-
-        if not isinstance(encoding, str):
-            encoding = "ascii"
-
-        if isinstance(context, str):
-            context = get_context(context)
-        elif context is not None and not isinstance(context, BaseContext):
-            raise TypeError(
-                "Invalid context, it should be a string or a multiprocessing context, "
-                "not: '%s'" % type(context).__name__
-            )
-
-        with self._core.lock:
-            exception_formatter = ExceptionFormatter(
-                colorize=colorize,
-                encoding=encoding,
-                diagnose=diagnose,
-                backtrace=backtrace,
-                hidden_frames_filename=self.catch.__code__.co_filename,
-                prefix=exception_prefix,
-            )
-
-            handler = Handler(
-                name=name,
-                sink=wrapped_sink,
-                levelno=levelno,
-                formatter=formatter,
-                is_formatter_dynamic=is_formatter_dynamic,
-                filter_=filter_func,
-                colorize=colorize,
-                serialize=serialize,
-                enqueue=enqueue,
-                multiprocessing_context=context,
-                id_=handler_id,
-                error_interceptor=error_interceptor,
-                exception_formatter=exception_formatter,
-                levels_ansi_codes=self._core.levels_ansi_codes,
-            )
-
-            handlers = self._core.handlers.copy()
-            handlers[handler_id] = handler
-
-            self._core.min_level = min(self._core.min_level, levelno)
-            self._core.handlers = handlers
-
-        return handler_id
+        pass
 
     def remove(self, handler_id=None):
         """Remove a previously added handler and stop sending logs to its sink.
@@ -1032,32 +722,7 @@ class Logger:
         >>> logger.remove(i)
         >>> logger.info("No longer logging")
         """
-        if not (handler_id is None or isinstance(handler_id, int)):
-            raise TypeError(
-                "Invalid handler id, it should be an integer as returned "
-                "by the 'add()' method (or None), not: '%s'" % type(handler_id).__name__
-            )
-
-        with self._core.lock:
-            handlers = self._core.handlers.copy()
-
-            if handler_id is not None and handler_id not in handlers:
-                raise ValueError("There is no existing handler with id %d" % handler_id) from None
-
-            if handler_id is None:
-                handler_ids = list(handlers.keys())
-            else:
-                handler_ids = [handler_id]
-
-            for handler_id in handler_ids:
-                handler = handlers.pop(handler_id)
-
-                # This needs to be done first in case "stop()" raises an exception
-                levelnos = (h.levelno for h in handlers.values())
-                self._core.min_level = min(levelnos, default=float("inf"))
-                self._core.handlers = handlers
-
-                handler.stop()
+        pass
 
     def complete(self):
         """Wait for the end of enqueued messages and asynchronous tasks scheduled by handlers.
@@ -1109,34 +774,9 @@ class Logger:
         >>> process.join()
         Message sent from the child
         """
-        tasks = []
+        pass
 
-        with self._core.lock:
-            handlers = self._core.handlers.copy()
-            for handler in handlers.values():
-                handler.complete_queue()
-                tasks.extend(handler.tasks_to_complete())
-
-        class AwaitableCompleter:
-            def __await__(self):
-                for task in tasks:
-                    yield from task.__await__()
-
-        return AwaitableCompleter()
-
-    def catch(
-        self,
-        exception=Exception,
-        *,
-        level="ERROR",
-        reraise=False,
-        onerror=None,
-        exclude=None,
-        default=None,
-        message="An error has been caught in function '{record[function]}', "
-        "process '{record[process].name}' ({record[process].id}), "
-        "thread '{record[thread].name}' ({record[thread].id}):"
-    ):
+    def catch(self, exception=Exception, *, level='ERROR', reraise=False, onerror=None, exclude=None, default=None, message="An error has been caught in function '{record[function]}', process '{record[process].name}' ({record[process].id}), thread '{record[thread].name}' ({record[thread].id}):"):
         """Return a decorator to automatically log possibly caught error in wrapped function.
 
         This is useful to ensure unexpected exceptions are logged, the entire program can be
@@ -1209,92 +849,10 @@ class Logger:
         ... def main():
         ...     1 / 0
         """
-        if callable(exception) and (
-            not isclass(exception) or not issubclass(exception, BaseException)
-        ):
-            return self.catch()(exception)
+        pass
 
-        logger = self
-
-        class Catcher:
-            def __init__(self, from_decorator):
-                self._from_decorator = from_decorator
-
-            def __enter__(self):
-                return None
-
-            def __exit__(self, type_, value, traceback_):
-                if type_ is None:
-                    return
-
-                if not issubclass(type_, exception):
-                    return False
-
-                if exclude is not None and issubclass(type_, exclude):
-                    return False
-
-                from_decorator = self._from_decorator
-                _, depth, _, *options = logger._options
-
-                if from_decorator:
-                    depth += 1
-
-                catch_options = [(type_, value, traceback_), depth, True] + options
-                logger._log(level, from_decorator, catch_options, message, (), {})
-
-                if onerror is not None:
-                    onerror(value)
-
-                return not reraise
-
-            def __call__(self, function):
-                if isclass(function):
-                    raise TypeError(
-                        "Invalid object decorated with 'catch()', it must be a function, "
-                        "not a class (tried to wrap '%s')" % function.__name__
-                    )
-
-                catcher = Catcher(True)
-
-                if iscoroutinefunction(function):
-
-                    async def catch_wrapper(*args, **kwargs):
-                        with catcher:
-                            return await function(*args, **kwargs)
-                        return default
-
-                elif isgeneratorfunction(function):
-
-                    def catch_wrapper(*args, **kwargs):
-                        with catcher:
-                            return (yield from function(*args, **kwargs))
-                        return default
-
-                else:
-
-                    def catch_wrapper(*args, **kwargs):
-                        with catcher:
-                            return function(*args, **kwargs)
-                        return default
-
-                functools.update_wrapper(catch_wrapper, function)
-                return catch_wrapper
-
-        return Catcher(False)
-
-    def opt(
-        self,
-        *,
-        exception=None,
-        record=False,
-        lazy=False,
-        colors=False,
-        raw=False,
-        capture=True,
-        depth=0,
-        ansi=False
-    ):
-        r"""Parametrize a logging call to slightly change generated log message.
+    def opt(self, *, exception=None, record=False, lazy=False, colors=False, raw=False, capture=True, depth=0, ansi=False):
+        """Parametrize a logging call to slightly change generated log message.
 
         Note that it's not possible to chain |opt| calls, the last one takes precedence over the
         others as it will "reset" the options to their default values.
@@ -1356,7 +914,7 @@ class Logger:
         >>> logger.opt(colors=True).warning("We got a <red>BIG</red> problem")
         [18:11:30] WARNING in '<module>' - We got a BIG problem
 
-        >>> logger.opt(raw=True).debug("No formatting\n")
+        >>> logger.opt(raw=True).debug("No formatting\\n")
         No formatting
 
         >>> logger.opt(capture=False).info("Displayed but not captured: {value}", value=123)
@@ -1371,18 +929,9 @@ class Logger:
         >>> func()
         [18:11:54] DEBUG in 'func' - Get parent context
         """
-        if ansi:
-            colors = True
-            warnings.warn(
-                "The 'ansi' parameter is deprecated, please use 'colors' instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        pass
 
-        args = self._options[-2:]
-        return Logger(self._core, exception, depth, record, lazy, colors, raw, capture, *args)
-
-    def bind(__self, **kwargs):  # noqa: N805
+    def bind(__self, **kwargs):
         """Bind attributes to the ``extra`` dict of each logged message record.
 
         This is used to add custom context to each logging call.
@@ -1415,11 +964,10 @@ class Logger:
         >>> instance_2.call("Second instance")
         127.0.0.1 - Second instance
         """
-        *options, extra = __self._options
-        return Logger(__self._core, *options, {**extra, **kwargs})
+        pass
 
     @contextlib.contextmanager
-    def contextualize(__self, **kwargs):  # noqa: N805
+    def contextualize(__self, **kwargs):
         """Bind attributes to the context-local ``extra`` dict while inside the ``with`` block.
 
         Contrary to |bind| there is no ``logger`` returned, the ``extra`` dict is modified in-place
@@ -1453,15 +1001,7 @@ class Logger:
         >>> logger.info("Done.")
         Done. | {}
         """
-        with __self._core.lock:
-            new_context = {**context.get(), **kwargs}
-            token = context.set(new_context)
-
-        try:
-            yield
-        finally:
-            with __self._core.lock:
-                context.reset(token)
+        pass
 
     def patch(self, patcher):
         """Attach a function to modify the record dict created by each logging call.
@@ -1509,8 +1049,7 @@ class Logger:
         ...     level, message = record["level"], record["message"]
         ...     logger.patch(lambda r: r.update(record)).log(level, message)
         """
-        *options, patchers, extra = self._options
-        return Logger(self._core, *options, patchers + [patcher], extra)
+        pass
 
     def level(self, name, no=None, color=None, icon=None):
         """Add, update or retrieve a logging level.
@@ -1565,55 +1104,7 @@ class Logger:
         >>> logger.warning("Updated!")
         30 /!\\ Updated!
         """
-        if not isinstance(name, str):
-            raise TypeError(
-                "Invalid level name, it should be a string, not: '%s'" % type(name).__name__
-            )
-
-        if no is color is icon is None:
-            try:
-                return self._core.levels[name]
-            except KeyError:
-                raise ValueError("Level '%s' does not exist" % name) from None
-
-        if name not in self._core.levels:
-            if no is None:
-                raise ValueError(
-                    "Level '%s' does not exist, you have to create it by specifying a level no"
-                    % name
-                )
-            else:
-                old_color, old_icon = "", " "
-        elif no is not None:
-            raise TypeError("Level '%s' already exists, you can't update its severity no" % name)
-        else:
-            _, no, old_color, old_icon = self.level(name)
-
-        if color is None:
-            color = old_color
-
-        if icon is None:
-            icon = old_icon
-
-        if not isinstance(no, int):
-            raise TypeError(
-                "Invalid level no, it should be an integer, not: '%s'" % type(no).__name__
-            )
-
-        if no < 0:
-            raise ValueError("Invalid level no, it should be a positive integer, not: %d" % no)
-
-        ansi = Colorizer.ansify(color)
-        level = Level(name, no, color, icon)
-
-        with self._core.lock:
-            self._core.levels[name] = level
-            self._core.levels_ansi_codes[name] = ansi
-            self._core.levels_lookup[name] = (name, name, no, icon)
-            for handler in self._core.handlers.values():
-                handler.update_format(name)
-
-        return level
+        pass
 
     def disable(self, name):
         """Disable logging of messages coming from ``name`` module and its children.
@@ -1637,7 +1128,7 @@ class Logger:
         >>> logger.disable("my_library")
         >>> logger.info("While publishing a library, don't forget to disable logging")
         """
-        self._change_activation(name, False)
+        pass
 
     def enable(self, name):
         """Enable logging of messages coming from ``name`` module and its children.
@@ -1661,7 +1152,7 @@ class Logger:
         >>> logger.info("Re-enabled, messages are logged.")
         [22:46:12] Re-enabled, messages are logged.
         """
-        self._change_activation(name, True)
+        pass
 
     def configure(self, *, handlers=None, levels=None, extra=None, patcher=None, activation=None):
         """Configure the core logger.
@@ -1726,75 +1217,10 @@ class Logger:
         >>> logger.bind(context="bar").info("Suppress global context")
         >>> # => "bar - Suppress global context"
         """
-        if handlers is not None:
-            self.remove()
-        else:
-            handlers = []
-
-        if levels is not None:
-            for params in levels:
-                self.level(**params)
-
-        if patcher is not None:
-            with self._core.lock:
-                self._core.patcher = patcher
-
-        if extra is not None:
-            with self._core.lock:
-                self._core.extra.clear()
-                self._core.extra.update(extra)
-
-        if activation is not None:
-            for name, state in activation:
-                if state:
-                    self.enable(name)
-                else:
-                    self.disable(name)
-
-        return [self.add(**params) for params in handlers]
-
-    def _change_activation(self, name, status):
-        if not (name is None or isinstance(name, str)):
-            raise TypeError(
-                "Invalid name, it should be a string (or None), not: '%s'" % type(name).__name__
-            )
-
-        with self._core.lock:
-            enabled = self._core.enabled.copy()
-
-            if name is None:
-                for n in enabled:
-                    if n is None:
-                        enabled[n] = status
-                self._core.activation_none = status
-                self._core.enabled = enabled
-                return
-
-            if name != "":
-                name += "."
-
-            activation_list = [
-                (n, s) for n, s in self._core.activation_list if n[: len(name)] != name
-            ]
-
-            parent_status = next((s for n, s in activation_list if name[: len(n)] == n), None)
-            if parent_status != status and not (name == "" and status is True):
-                activation_list.append((name, status))
-
-                def modules_depth(x):
-                    return x[0].count(".")
-
-                activation_list.sort(key=modules_depth, reverse=True)
-
-            for n in enabled:
-                if n is not None and (n + ".")[: len(name)] == name:
-                    enabled[n] = status
-
-            self._core.activation_list = activation_list
-            self._core.enabled = enabled
+        pass
 
     @staticmethod
-    def parse(file, pattern, *, cast={}, chunk=2**16):  # noqa: B006
+    def parse(file, pattern, *, cast={}, chunk=2 ** 16):
         """Parse raw logs and extract each entry as a |dict|.
 
         The logging format has to be specified as the regex ``pattern``, it will then be
@@ -1841,232 +1267,43 @@ class Logger:
         ...     for log in logger.parse(file, reg, cast=cast):
         ...         print(log["date"], log["something_else"])
         """
-        if isinstance(file, (str, PathLike)):
-            should_close = True
-            fileobj = open(str(file))
-        elif hasattr(file, "read") and callable(file.read):
-            should_close = False
-            fileobj = file
-        else:
-            raise TypeError(
-                "Invalid file, it should be a string path or a file object, not: '%s'"
-                % type(file).__name__
-            )
+        pass
 
-        if isinstance(cast, dict):
+    def trace(__self, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``'TRACE'``."""
+        pass
 
-            def cast_function(groups):
-                for key, converter in cast.items():
-                    if key in groups:
-                        groups[key] = converter(groups[key])
+    def debug(__self, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``'DEBUG'``."""
+        pass
 
-        elif callable(cast):
-            cast_function = cast
-        else:
-            raise TypeError(
-                "Invalid cast, it should be a function or a dict, not: '%s'" % type(cast).__name__
-            )
+    def info(__self, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``'INFO'``."""
+        pass
 
-        try:
-            regex = re.compile(pattern)
-        except TypeError:
-            raise TypeError(
-                "Invalid pattern, it should be a string or a compiled regex, not: '%s'"
-                % type(pattern).__name__
-            ) from None
+    def success(__self, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``'SUCCESS'``."""
+        pass
 
-        matches = Logger._find_iter(fileobj, regex, chunk)
+    def warning(__self, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``'WARNING'``."""
+        pass
 
-        for match in matches:
-            groups = match.groupdict()
-            cast_function(groups)
-            yield groups
+    def error(__self, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``'ERROR'``."""
+        pass
 
-        if should_close:
-            fileobj.close()
+    def critical(__self, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``'CRITICAL'``."""
+        pass
 
-    @staticmethod
-    def _find_iter(fileobj, regex, chunk):
-        buffer = fileobj.read(0)
+    def exception(__self, __message, *args, **kwargs):
+        """Convenience method for logging an ``'ERROR'`` with exception information."""
+        pass
 
-        while 1:
-            text = fileobj.read(chunk)
-            buffer += text
-            matches = list(regex.finditer(buffer))
-
-            if not text:
-                yield from matches
-                break
-
-            if len(matches) > 1:
-                end = matches[-2].end()
-                buffer = buffer[end:]
-                yield from matches[:-1]
-
-    def _log(self, level, from_decorator, options, message, args, kwargs):
-        core = self._core
-
-        if not core.handlers:
-            return
-
-        try:
-            level_id, level_name, level_no, level_icon = core.levels_lookup[level]
-        except (KeyError, TypeError):
-            if isinstance(level, str):
-                raise ValueError("Level '%s' does not exist" % level) from None
-            if not isinstance(level, int):
-                raise TypeError(
-                    "Invalid level, it should be an integer or a string, not: '%s'"
-                    % type(level).__name__
-                ) from None
-            if level < 0:
-                raise ValueError(
-                    "Invalid level value, it should be a positive integer, not: %d" % level
-                ) from None
-            cache = (None, "Level %d" % level, level, " ")
-            level_id, level_name, level_no, level_icon = cache
-            core.levels_lookup[level] = cache
-
-        if level_no < core.min_level:
-            return
-
-        (exception, depth, record, lazy, colors, raw, capture, patchers, extra) = options
-
-        frame = get_frame(depth + 2)
-
-        try:
-            name = frame.f_globals["__name__"]
-        except KeyError:
-            name = None
-
-        try:
-            if not core.enabled[name]:
-                return
-        except KeyError:
-            enabled = core.enabled
-            if name is None:
-                status = core.activation_none
-                enabled[name] = status
-                if not status:
-                    return
-            else:
-                dotted_name = name + "."
-                for dotted_module_name, status in core.activation_list:
-                    if dotted_name[: len(dotted_module_name)] == dotted_module_name:
-                        if status:
-                            break
-                        enabled[name] = False
-                        return
-                enabled[name] = True
-
-        current_datetime = aware_now()
-
-        code = frame.f_code
-        file_path = code.co_filename
-        file_name = basename(file_path)
-        thread = current_thread()
-        process = current_process()
-        elapsed = current_datetime - start_time
-
-        if exception:
-            if isinstance(exception, BaseException):
-                type_, value, traceback = (type(exception), exception, exception.__traceback__)
-            elif isinstance(exception, tuple):
-                type_, value, traceback = exception
-            else:
-                type_, value, traceback = sys.exc_info()
-            exception = RecordException(type_, value, traceback)
-        else:
-            exception = None
-
-        log_record = {
-            "elapsed": elapsed,
-            "exception": exception,
-            "extra": {**core.extra, **context.get(), **extra},
-            "file": RecordFile(file_name, file_path),
-            "function": code.co_name,
-            "level": RecordLevel(level_name, level_no, level_icon),
-            "line": frame.f_lineno,
-            "message": str(message),
-            "module": splitext(file_name)[0],
-            "name": name,
-            "process": RecordProcess(process.ident, process.name),
-            "thread": RecordThread(thread.ident, thread.name),
-            "time": current_datetime,
-        }
-
-        if lazy:
-            args = [arg() for arg in args]
-            kwargs = {key: value() for key, value in kwargs.items()}
-
-        if capture and kwargs:
-            log_record["extra"].update(kwargs)
-
-        if record:
-            if "record" in kwargs:
-                raise TypeError(
-                    "The message can't be formatted: 'record' shall not be used as a keyword "
-                    "argument while logger has been configured with '.opt(record=True)'"
-                )
-            kwargs.update(record=log_record)
-
-        if colors:
-            if args or kwargs:
-                colored_message = Colorizer.prepare_message(message, args, kwargs)
-            else:
-                colored_message = Colorizer.prepare_simple_message(str(message))
-            log_record["message"] = colored_message.stripped
-        elif args or kwargs:
-            colored_message = None
-            log_record["message"] = message.format(*args, **kwargs)
-        else:
-            colored_message = None
-
-        if core.patcher:
-            core.patcher(log_record)
-
-        for patcher in patchers:
-            patcher(log_record)
-
-        for handler in core.handlers.values():
-            handler.emit(log_record, level_id, from_decorator, raw, colored_message)
-
-    def trace(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``'TRACE'``."""
-        __self._log("TRACE", False, __self._options, __message, args, kwargs)
-
-    def debug(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``'DEBUG'``."""
-        __self._log("DEBUG", False, __self._options, __message, args, kwargs)
-
-    def info(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``'INFO'``."""
-        __self._log("INFO", False, __self._options, __message, args, kwargs)
-
-    def success(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``'SUCCESS'``."""
-        __self._log("SUCCESS", False, __self._options, __message, args, kwargs)
-
-    def warning(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``'WARNING'``."""
-        __self._log("WARNING", False, __self._options, __message, args, kwargs)
-
-    def error(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``'ERROR'``."""
-        __self._log("ERROR", False, __self._options, __message, args, kwargs)
-
-    def critical(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``'CRITICAL'``."""
-        __self._log("CRITICAL", False, __self._options, __message, args, kwargs)
-
-    def exception(__self, __message, *args, **kwargs):  # noqa: N805
-        r"""Convenience method for logging an ``'ERROR'`` with exception information."""
-        options = (True,) + __self._options[1:]
-        __self._log("ERROR", False, options, __message, args, kwargs)
-
-    def log(__self, __level, __message, *args, **kwargs):  # noqa: N805
-        r"""Log ``message.format(*args, **kwargs)`` with severity ``level``."""
-        __self._log(__level, False, __self._options, __message, args, kwargs)
+    def log(__self, __level, __message, *args, **kwargs):
+        """Log ``message.format(*args, **kwargs)`` with severity ``level``."""
+        pass
 
     def start(self, *args, **kwargs):
         """Deprecated function to |add| a new handler.
@@ -2077,12 +1314,7 @@ class Logger:
           ``start()`` will be removed in Loguru 1.0.0, it is replaced by ``add()`` which is a less
           confusing name.
         """
-        warnings.warn(
-            "The 'start()' method is deprecated, please use 'add()' instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.add(*args, **kwargs)
+        pass
 
     def stop(self, *args, **kwargs):
         """Deprecated function to |remove| an existing handler.
@@ -2093,9 +1325,4 @@ class Logger:
           ``stop()`` will be removed in Loguru 1.0.0, it is replaced by ``remove()`` which is a less
           confusing name.
         """
-        warnings.warn(
-            "The 'stop()' method is deprecated, please use 'remove()' instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.remove(*args, **kwargs)
+        pass
